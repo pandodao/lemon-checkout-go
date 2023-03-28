@@ -2,7 +2,7 @@
 
 A Simple Go SDK package for https://lemonsqueezy.com
 
-## Example
+## Example: Create checkout
 
 ```go
 package main
@@ -39,6 +39,57 @@ func main() {
 
 	fmt.Printf("payment URL: %+v\n", resp.Attributes.URL)
 }
+```
+
+### Example: Handle webhook
+
+```go
+import (
+	"github.com/pandodao/lemon-checkout-go"
+)
+
+type (
+	LemonWebhookPayload struct {
+		lemon.WebhookPayload
+		Meta struct {
+			EventName  string `json:"event_name"`
+			CustomData struct {
+				MyTraceID    string `json:"my_trace_id"`
+			} `json:"custom_data"`
+		} `json:"meta"`
+	}
+)
+
+func HandleLemonWebhook() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		body := &LemonWebhookPayload{}
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&body); err != nil {
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		if body.Meta.EventName != "order_created" {
+			w.Write([]byte("pass"))
+			return
+		}
+
+		if body.Data.Attributes.Status != "paid" {
+			w.Write([]byte("pass"))
+			return
+		}
+
+		myTraceID := body.Meta.CustomData.MyTraceID
+
+		// query `myTraceID` in your database
+		// ...
+
+		render.JSON(w, "ok")
+	}
+}
+
 ```
 
 ## Options
