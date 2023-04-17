@@ -3,7 +3,11 @@ package lemon
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -103,6 +107,36 @@ func (c *Client) request(ctx context.Context, method string, uri string, body, r
 	if err := json.Unmarshal(respData, &res); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (c *Client) VerifyRequestSign(r *http.Request) error {
+	secretKey := []byte(c.key)
+	message, err := io.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println("Invalid signature.")
+		return err
+	}
+
+	h := hmac.New(sha256.New, secretKey)
+	h.Write(message)
+
+	signature := r.Header.Get("X-Signature")
+	signatureBytes, err := hex.DecodeString(signature)
+	if err != nil {
+		fmt.Println("Invalid signature.")
+		return err
+	}
+
+	if hmac.Equal(signatureBytes, h.Sum(nil)) {
+		fmt.Println("Signature is valid.")
+	} else {
+		return errors.New("invalid signature")
+	}
+
+	reader := bytes.NewReader(message)
+	r.Body = io.NopCloser(reader)
 
 	return nil
 }
