@@ -111,8 +111,8 @@ func (c *Client) request(ctx context.Context, method string, uri string, body, r
 	return nil
 }
 
-func (c *Client) VerifyRequestSign(r *http.Request) error {
-	secretKey := []byte(c.key)
+func (c *Client) VerifyRequestSign(r *http.Request, secret string) error {
+	secretKey := []byte(secret)
 	message, err := io.ReadAll(r.Body)
 	if err != nil {
 		fmt.Println("Invalid signature.")
